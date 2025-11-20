@@ -1,0 +1,756 @@
+setwd("C:/Users/lindi/Desktop/R")
+if (!require("haven")) install.packages("haven")
+library(haven)
+if (!require("kableExtra")) install.packages("kableExtra")
+library(kableExtra)
+
+
+diarioGiornal <- read_dta("UsoTempo_A2013_DiarioGiornal.dta")
+diarioSettima <- read_dta("UsoTempo_A2013_DiarioSettima.dta")
+individui <- read_dta("UsoTempo_A2013_Individui.dta")
+
+if (!require("dplyr")) install.packages("dplyr")
+if (!require("ggplot2")) install.packages("ggplot2")
+library(dplyr)
+library(ggplot2)
+
+
+
+
+###              1.
+###################################################################
+
+################ GESTIONE DEI MISSING DELLA VARIABILE DIPENDENTE VORREBBE SVOLGERE TELE
+################# Prova
+# Caricamento dei pacchetti necessari
+if (!require("haven")) install.packages("haven")
+library(haven)
+if (!require("dplyr")) install.packages("dplyr")
+library(dplyr)
+if (!require("ggplot2")) install.packages("ggplot2")
+library(ggplot2)
+
+
+# Converti 'telela' in numerico, sostituendo stringhe vuote o non numeriche con NA
+individui <- individui %>%
+  mutate(telela = as.numeric(telela),  # Converte in numerico, stringhe non numeriche diventano NA
+         telela = if_else(telela == 0, NA_real_, telela))  # Trasforma 0 in NA se necessario
+
+# Filtra e rimuovi le righe con NA in 'telela'
+individui_clean <- individui %>%
+  filter(!is.na(telela))
+
+# Verifica che i valori 0 o "" siano stati rimossi
+table(individui_clean$telela)
+
+# Calcola le frequenze e le percentuali per 'telela' solo con dati validi
+results_df <- individui_clean %>%
+  count(telela) %>%
+  mutate(Percentuale = n / sum(n) * 100,  # Calcola percentuale sul totale dei non-NA
+         Cumulata = cumsum(Percentuale))
+
+# Aggiungi le etichette per le categorie
+results_df$telela <- factor(results_df$telela,
+                            levels = c(1, 2, 3, 4, 5),
+                            labels = c("Già svolge telelavoro",
+                                       "Vorrebbe svolgere telelavoro",
+                                       "Non vorrebbe svolgere telelavoro",
+                                       "Non può svolgere telelavoro",
+                                       "Non sa"))
+
+# Crea la tabella formattata per il report
+results_table <- kable(results_df, format = "html", col.names = c("Sarebbe interessato a svolgere telelavoro?", "Frequenza", "Percentuale", "Cumulata"), caption = "Distribuzione della variabile telelavoro") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, font_size = 12) %>%
+  column_spec(1, bold = T, color = "black")
+
+# Stampa della tabella
+print(results_table)
+
+#Grafico Variabile dipendente.
+
+##############################################################
+
+
+
+
+
+
+
+#       2. RAPPRESENTAZIONE GRAFICA VARIABILE DIPENDENTE.
+
+##GRAFICO A BARRE
+library(ggplot2)
+str(individui_clean)
+summary(individui_clean$telela)
+# Creazione del grafico a barre
+graficoBarre <- ggplot(data = individui_clean, aes(x = factor(telela, levels = c(1, 2, 3, 4, 5), 
+                                                         labels = c("Già svolge", "Vorrebbe svolgere ", 
+                                                                    "Non vorrebbe svolgere ", "Non può svolgere ", "Non sa")),
+                                              fill = factor(telela))) +
+  geom_bar(stat = "count") +
+  labs(x = "Categorie Telelavoro", y = "Conteggio", title = "Distribuzione della variabile telelavoro") +
+  scale_fill_brewer(palette = "Pastel1") +
+  theme_minimal()
+# Stampa GRF
+print(graficoBarre)
+
+
+
+
+
+
+
+
+
+
+
+
+
+ # 3. VARIABILI INDIPENDENTI DEMOGRAFICHE
+##############################################################################################################à
+
+
+# Carica le librerie necessarie
+library(ggplot2)
+library(dplyr)
+
+# Visualizza i valori unici per la variabile relativa all'età, se è già una variabile continua, salta questo passaggio
+if("eta" %in% names(individui)) {
+  print(unique(individui$eta))
+}
+
+# Visualizza i valori unici per l'istruzione
+if("istrm" %in% names(individui)) {
+  print(unique(individui$istrm))
+}
+
+# Visualizza i valori unici per il sesso
+if("sesso" %in% names(individui)) {
+  print(unique(individui$sesso))
+}
+
+# Visualizza i valori unici per la cittadinanza
+if("citt" %in% names(individui)) {
+  print(unique(individui$citt))
+}
+
+# Visualizza i valori unici per la ripartizione geografica
+if("rip" %in% names(individui)) {
+  print(unique(individui$rip))
+}
+
+#Ricodifica le variabili
+individui <- individui %>%
+  mutate(
+    # Ricodifica istruzione
+    fascia_istruzione = case_when(
+      istrm %in% c("01") ~ "bassa",
+      istrm %in% c("07", "09") ~ "media",
+      istrm %in% c("10", "11") ~ "alta",
+      TRUE ~ NA_character_  # gestione di stringhe vuote o altri valori non mappati
+    ),
+    
+    # Ricodifica sesso
+    sesso = factor(sesso, levels = c("1", "2"), labels = c("Maschio", "Femmina")),
+    
+    # Ricodifica cittadinanza
+    fascia_cittadinanza = factor(citt, levels = c("1", "3"), labels = c("Italiana", "Straniera")),
+    
+    # Ricodifica ripartizione geografica
+    regione = factor(rip, levels = c("1", "2", "3", "4", "5"), labels = c("Nord-ovest", "Nord-est", "Centro", "Sud", "Isole")),
+    
+    # Gestione valori vuoti per ripartizione geografica
+    regione = if_else(rip == "", NA_character_, as.character(regione))
+  )
+
+# Verifica delle ricodifiche
+summary(individui$fascia_istruzione)
+summary(individui$sesso)
+summary(individui$fascia_cittadinanza)
+summary(individui$regione)
+
+##TABELLE DELLE FREQUENZE:
+library(dplyr)
+library(knitr)
+
+# Calcola frequenze e percentuali per 'fascia_istruzione'
+istruzione_table <- individui %>%
+  count(fascia_istruzione) %>%
+  mutate(Percentuale = n / sum(n) * 100,
+         Cumulata = cumsum(Percentuale))
+
+# Calcola frequenze e percentuali per 'sesso'
+sesso_table <- individui %>%
+  count(sesso) %>%
+  mutate(Percentuale = n / sum(n) * 100,
+         Cumulata = cumsum(Percentuale))
+
+# Calcola frequenze e percentuali per 'fascia_cittadinanza'
+cittadinanza_table <- individui %>%
+  count(fascia_cittadinanza) %>%
+  mutate(Percentuale = n / sum(n) * 100,
+         Cumulata = cumsum(Percentuale))
+
+# Calcola frequenze e percentuali per 'regione'
+regione_table <- individui %>%
+  count(regione) %>%
+  mutate(Percentuale = n / sum(n) * 100,
+         Cumulata = cumsum(Percentuale))
+
+
+
+#Gestione NA
+library(dplyr)
+library(knitr)
+
+# Calcola frequenze e percentuali escludendo i NA
+istruzione_table <- individui %>%
+  filter(!is.na(fascia_istruzione)) %>%  # Rimuove NA
+  count(fascia_istruzione) %>%
+  mutate(Percentuale = n / sum(n) * 100,
+         Cumulata = cumsum(Percentuale))
+
+regione_table <- individui %>%
+  filter(!is.na(regione)) %>%  # Rimuove NA
+  count(regione) %>%
+  mutate(Percentuale = n / sum(n) * 100,
+         Cumulata = cumsum(Percentuale))
+
+# Stampa le tabelle con knitr
+kable(istruzione_table, format = "markdown", col.names = c("Fascia d'Istruzione", "Frequenza", "Percentuale", "Cumulata"), caption = "Distribuzione della variabile fascia d'istruzione") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+kable(regione_table, format = "markdown", col.names = c("Ripartizione Geografica", "Frequenza", "Percentuale", "Cumulata"), caption = "Distribuzione della ripartizione geografica") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+
+##CODIFICA E TABELLA DELLA VARIABILE ETA'
+names(individui)
+# Mostra i valori unici di 'anno', 'claseta2' per interpretarne il significato
+summary(individui$anno)
+unique(individui$anno)
+
+summary(individui$claseta2)
+unique(individui$claseta2)
+
+library(dplyr)
+
+individui <- individui %>%
+  mutate(
+    fascia_eta = case_when(
+      claseta2 %in% c("01", "02") ~ "giovannissimi",
+      claseta2 %in% c("03", "04", "05") ~ "giovani",
+      claseta2 %in% c("06", "07", "08") ~ "adulti",
+      claseta2 %in% c("09", "10", "11") ~ "anziani",
+      TRUE ~ "non specificato"  # Gestione dei valori mancanti o non mappati
+    ),
+    # Converti claseta2 in un fattore per visualizzazioni e analisi future
+    claseta2 = factor(claseta2)
+  )
+
+# Verifica delle categorie ricodificate
+table(individui$fascia_eta)
+library(dplyr)
+library(knitr)
+
+
+############### TABELLA FASCIA ETA'
+# Calcola le frequenze, le percentuali e le percentuali cumulative
+eta_table <- individui %>%
+  group_by(fascia_eta) %>%
+  summarise(Frequenza = n()) %>%
+  mutate(
+    Percentuale = (Frequenza / sum(Frequenza)) * 100,
+    Cumulata = cumsum(Percentuale)
+  ) %>%
+  ungroup()
+
+# Visualizza la tabella usando knitr
+kable(eta_table, format = "markdown", col.names = c("Fascia d'Età", "Frequenza", "Percentuale (%)", "Percentuale Cumulativa (%)"),
+      caption = "Tabella delle Frequenze per Fascia d'Età") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, font_size = 12)
+
+############### TABELLA CITTADINANZA
+# Calcola le frequenze, le percentuali e le percentuali cumulative per 'fascia_cittadinanza'
+cittadinanza_table <- individui %>%
+  group_by(fascia_cittadinanza) %>%
+  summarise(Frequenza = n()) %>%
+  mutate(
+    Percentuale = (Frequenza / sum(Frequenza)) * 100,
+    Cumulata = cumsum(Percentuale)
+  ) %>%
+  ungroup()
+
+# Visualizza la tabella usando knitr
+kable(cittadinanza_table, format = "markdown", col.names = c("Cittadinanza", "Frequenza", "Percentuale (%)", "Percentuale Cumulativa (%)"),
+      caption = "Tabella delle Frequenze per Cittadinanza") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, font_size = 12)
+
+
+
+###TABELLA SESSO
+# Calcola le frequenze, le percentuali e le percentuali cumulative per 'sesso'
+sesso_table <- individui %>%
+  group_by(sesso) %>%
+  summarise(Frequenza = n(), .groups = 'drop') %>%
+  mutate(
+    Percentuale = (Frequenza / sum(Frequenza, na.rm = TRUE)) * 100,  # calcola percentuale escludendo NA
+    Cumulata = cumsum(Percentuale)
+  )
+
+# Stampa della tabella con knitr
+kable(sesso_table, format = "markdown", col.names = c("Sesso", "Frequenza", "Percentuale (%)", "Percentuale Cumulativa (%)"),
+      caption = "Tabella delle Frequenze per Sesso") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, font_size = 12)
+
+####################################################################################################################################
+
+
+
+
+
+
+
+
+
+
+### VARIABILI SULLA SODDISFAZIONE ################################################################
+##################################################################################
+##################################################################################
+
+##################################################################################
+##   1.   QUANTITA' TEMPO LIBERO "Sei Soddisfatto del tempo libero a tua disposizione ?"
+##################################################################################
+unique(individui$sodqnt)
+
+# Ricodifica della variabile 'sodqnt' includendo NA con i valori neutri
+individui <- individui %>%
+  mutate(
+    sodqnt_bin = case_when(
+      sodqnt %in% c("3", "4", "") ~ "Si",  # Includi anche i valori vuoti come neutri
+      sodqnt %in% c("1", "2") ~ "No",
+      TRUE ~ "Si"  # Assumi che tutti gli altri casi (inclusi NA) siano neutri
+    )
+  )
+
+# Calcola le frequenze e le percentuali aggiornate
+sodqnt_table <- individui %>%
+  count(sodqnt_bin, name = "Frequenza") %>%
+  mutate(
+    `Percentuale (%)` = Frequenza / sum(Frequenza, na.rm = TRUE) * 100,
+    `Percentuale Cumulativa (%)` = cumsum(`Percentuale (%)`)
+  )
+
+# Stampa la tabella aggiornata
+kable(sodqnt_table, format = "html", col.names = c("Categoria", "Frequenza", "Percentuale (%)", "Percentuale Cumulativa (%)"), caption = "Soddisfazione Quantità Tempo Libero") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, font_size = 12)
+####################################################################################################################################################################
+
+
+
+####################################################################################################
+##  2.   VARIABILE SODDISFAZIONE VITA "Sei soddisfatto della vita che conduci ?"
+####################################################################################################
+unique(individui$votovi_bin)
+
+# Definizione della funzione compute_table
+compute_table <- function(data_column) {
+  data_frame <- data_column %>%
+    table() %>%
+    as.data.frame() %>%
+    rename(Categoria = 1, Frequenza = 2) %>%
+    mutate(
+      `Percentuale (%)` = Frequenza / sum(Frequenza) * 100,
+      `Percentuale Cumulativa (%)` = cumsum(`Percentuale (%)`)
+    )
+  return(data_frame)
+}
+
+# Ricodifica della variabile 'votovi' in binario includendo i NA in "No"
+individui <- individui %>%
+  mutate(
+    votovi_bin = case_when(
+      votovi >= 6 ~ "Si",
+      TRUE ~ "No"  # Includi tutti gli altri casi (compresi NA) in "No"
+    )
+  )
+
+# Calcola le frequenze e le percentuali per la variabile ricodificata
+votovi_table <- compute_table(individui$votovi_bin)
+
+
+
+# Funzione per stampare le tabelle formattate
+print_table <- function(data_table, caption) {
+  data_table <- data_table %>%
+    mutate(
+      Frequenza = format(Frequenza, big.mark = ","),
+      `Percentuale (%)` = sprintf("%.2f", `Percentuale (%)`),
+      `Percentuale Cumulativa (%)` = sprintf("%.2f", `Percentuale Cumulativa (%)`)
+    )
+  
+  kable(data_table, format = "html", col.names = c("Categoria", "Frequenza", "Percentuale (%)", "Percentuale Cumulativa (%)"), caption = caption) %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, font_size = 12) %>%
+    column_spec(1, bold = TRUE, border_right = TRUE)
+}
+
+# Visualizzazione delle tabelle
+print_table(votovi_table, "Soddisfazione della Vita")
+########################################################################################################################################################################################################
+
+
+
+
+
+
+####################################################################################################
+##  2.   VARIABILE SODDISFAZIONE VITA "Sei soddisfatto dell'equilibrio lavoro - tempo libero ?"
+####################################################################################################
+unique(individui$sodequ_bin)
+
+# Ricodifica della variabile 'sodequ' in binario includendo i NA in "No"
+individui <- individui %>%
+  mutate(
+    sodequ_bin = case_when(
+      sodequ %in% c("3", "4", "5") ~ "Si",
+      TRUE ~ "No"  # Includi tutti gli altri casi (compresi NA e valori vuoti) in "No"
+    )
+  )
+
+# Calcola le frequenze e le percentuali per la variabile ricodificata
+sodequ_table <- compute_table(individui$sodequ_bin)
+
+# Stampa della tabella
+print_table(sodequ_table, "Equilibrio Lavoro e Tempo Libero")
+########################################################################################################################################################################################################
+
+
+####################################################################################################
+##  2.   VARIABILE SODDISFAZIONE LAVORO "Sei soddisfatto del tuo lavoro ?"
+####################################################################################################
+#Codif,ica iniziale variabile
+unique(individui$sodla)
+
+#Ricodifica
+individui <- individui %>%
+  mutate(
+    sodla_bin = case_when(
+      sodla %in% c("4", "5") ~ "Si",
+      TRUE ~ "No"
+    )
+  )
+
+# Calcola le frequenze e le percentuali per la variabile ricodificata
+sodla_table <- individui %>%
+  count(sodla_bin, sort = TRUE) %>%
+  mutate(
+    Percentuale = n / sum(n) * 100,
+    Cumulata = cumsum(Percentuale)
+  )
+
+print_table <- function(data_table, caption) {
+  kable(data_table, format = "html", col.names = c("Categoria", "Frequenza", "Percentuale (%)", "Percentuale Cumulativa (%)"), caption = caption, digits = 2) %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, font_size = 12) %>%
+    column_spec(1, bold = TRUE, border_right = TRUE)
+}
+
+# Visualizza la tabella
+print_table(sodla_table, "Soddisfazione Lavoro")
+
+
+
+
+####################################################################################################
+##  2.   VARIABILE Situazione Finanziaria "Sei soddisfatto della tua situazione finanziaria ?"
+####################################################################################################
+
+unique(individui$risec)
+
+
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+# Ricodifica della variabile 'risec' in binario
+individui <- individui %>%
+  mutate(
+    risec_bin = case_when(
+      risec %in% c("3", "4") ~ "Si",
+      TRUE ~ "No"  # Includi "1", "2" e eventuali NA in "No"
+    )
+  )
+
+# Calcola le frequenze e le percentuali per la variabile ricodificata
+risec_table <- individui %>%
+  count(risec_bin, sort = TRUE) %>%
+  mutate(
+    Percentuale = n / sum(n) * 100,
+    Cumulata = cumsum(Percentuale)
+  )
+
+# Funzione per stampare le tabelle formattate senza specificare il formato numerico in column_spec
+print_table <- function(data_table, caption) {
+  kable(data_table, format = "html", col.names = c("Categoria", "Frequenza", "Percentuale (%)", "Percentuale Cumulativa (%)"), caption = caption) %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, font_size = 12) %>%
+    column_spec(1, bold = TRUE, border_right = TRUE)
+}
+
+# Visualizzazione della tabella
+print_table(risec_table, "Soddisfazione della Situazione Finanziaria")
+########################################################################################################################################################################################################
+
+
+
+#########################################################################################################################################################################################################################
+########################################################################################################################################################################################################
+  #3. VARIABILI SULLO STRESS
+########################################################################################################################################################################################################
+names(individui)
+
+unique(individui$stress)
+unique(individui$strfon)
+
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+# Supponiamo che i tuoi dati siano nel dataframe 'individui' e le variabili siano 'stress' per la quantità di stress
+# e 'strfon' per la fonte dello stress
+
+# Ricodifica la variabile 'stress'
+individui <- individui %>%
+  mutate(
+    stress_cat = case_when(
+      stress == "1" ~ "mai",
+      stress == "2" ~ "a volte",
+      stress == "3" ~ "spesso",
+      stress == "4" ~ "sempre",
+      TRUE ~ "nessuna risposta"  # assume che "" venga trattato come risposta mancante
+    )
+  )
+
+# Ricodifica la variabile 'strfon'
+individui <- individui %>%
+  mutate(
+    strfon_cat = case_when(
+      strfon %in% c("01", "02") ~ "lavoro",
+      strfon %in% c("03", "04") ~ "situazione finanziaria",
+      strfon %in% c("05", "06") ~ "vita privata",
+      strfon == "10" ~ "studiare",
+      strfon %in% c("07", "08", "09", "11", "12") ~ "altro",
+      TRUE ~ "non so"  # include anche le risposte mancanti e altre categorie meno comuni
+    )
+  )
+
+######
+# Funzione per calcolare le frequenze e le percentuali aggiornata
+compute_table <- function(data_column) {
+  data_frame <- data_column %>%
+    table() %>%
+    as.data.frame() %>%
+    rename_with(~ c("Categoria", "Frequenza"), .cols = c(1, 2)) %>%
+    mutate(
+      Percentuale = Frequenza / sum(Frequenza) * 100,
+      `Percentuale Cumulativa` = cumsum(Percentuale)
+    )
+  return(data_frame)
+}
+
+#####
+
+# Applica la funzione alle variabili di interesse
+stress_table <- compute_table(individui$stress_cat)
+strfon_table <- compute_table(individui$strfon_cat)
+
+# Funzione per stampare le tabelle
+print_table <- function(data_table, caption) {
+  kable(data_table, format = "html", caption = caption) %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE) %>%
+    column_spec(1, bold = TRUE)
+}
+
+# Visualizza le tabelle
+print_table(stress_table, "Distribuzione della variabile quantità di stress")
+print_table(strfon_table, "Distribuzione della variabile fonte di stress")
+########################################################################################################################################################################################################
+########################################################################################################################################################################################################
+
+
+
+
+
+
+
+
+########################################################################################################################################################################################################
+#ALTRE VARIABILI INDIPENDENTI
+###########################################################################################################
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+# Visualizza i valori unici per il numero di stanze
+unique(individui$stanzem)
+
+# Ricodifica della variabile 'stanzem'
+individui <- individui %>%
+  mutate(
+    stanzem_cat = case_when(
+      stanzem <= 3 ~ "Piccola",
+      stanzem <= 6 ~ "Media",
+      TRUE ~ "Grande"
+    )
+  )
+
+# Verifica la ricodifica
+summary(individui$stanzem_cat)
+
+# Funzione migliorata per calcolare le tabelle di frequenza
+compute_table <- function(data_column) {
+  data_frame <- data_column %>%
+    table() %>%
+    as.data.frame() %>%
+    rename(Categoria = 1, Frequenza = 2) %>%
+    mutate(
+      Frequenza = as.numeric(as.character(Frequenza)),
+      `Percentuale (%)` = Frequenza / sum(Frequenza) * 100,
+      `Percentuale Cumulativa (%)` = cumsum(`Percentuale (%)`)
+    )
+  return(data_frame)
+}
+
+# Funzione per stampare le tabelle
+print_table <- function(data_table, caption) {
+  kable(data_table, format = "html", col.names = c("Categoria", "Frequenza", "Percentuale (%)", "Percentuale Cumulativa (%)"), caption = caption) %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE, font_size = 12) %>%
+    column_spec(1, bold = TRUE, border_right = TRUE)
+}
+
+# Calcola e stampa la tabella per la variabile 'stanzem_cat'
+stanzem_table <- compute_table(individui$stanzem_cat)
+print_table(stanzem_table, "Numero di stanze nell'abitazione")
+
+
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
+####   MODELLO 1 (Variabili Demografiche)
+# Creazione della variabile binaria: 1 se "Vorrebbe", 0 altrimenti
+individui <- individui %>%
+  mutate(telela_bin = ifelse(telela == "Vorrebbe", 1, 0))
+
+# Seleziona solo le variabili demografiche da usare per il modello
+dati_model_bin <- individui %>%
+  dplyr::select(telela_bin, fascia_eta, fascia_istruzione, sesso, regione, fascia_cittadinanza) %>%
+  filter(!is.na(telela_bin))  # Rimuove NA in telela_bin
+
+# Stima del modello logit binario con sole variabili demografiche
+modello_logit_bin_demografico <- glm(telela_bin ~ fascia_eta + fascia_istruzione + sesso + regione + fascia_cittadinanza,
+                                     family = binomial(link = "logit"),
+                                     data = dati_model_bin)
+
+# Sommario del modello
+summary(modello_logit_bin_demografico)
+
+# Coefficienti come odds ratio
+exp(coef(modello_logit_bin_demografico))
+
+# Predizioni: probabilità di appartenere alla classe "Vorrebbe" (1)
+predizioni_bin <- predict(modello_logit_bin_demografico, type = "response")
+
+# Classe predetta (probabilità maggiore di 0.5 significa "Vorrebbe", altrimenti "Non Vorrebbe")
+classe_predetta_bin <- ifelse(predizioni_bin > 0.5, 1, 0)
+
+# Matrice di confusione
+tabella_confusione <- table(Predetto = classe_predetta_bin, Reale = dati_model_bin$telela_bin)
+print(tabella_confusione)
+
+#################################################à
+##################################################
+#################################à MODELLO 2
+# ----------------------------------------------------------
+# 4. Stima del modello logit binario con variabili di soddisfazione
+# ----------------------------------------------------------
+
+# Aggiungiamo variabili relative alla soddisfazione, come ad esempio la soddisfazione del tempo libero, della vita, ecc.
+
+# Modifica il dataset per includere le variabili di soddisfazione
+individui <- individui %>%
+  mutate(
+    # Ricodifica della variabile di soddisfazione del tempo libero (esempio)
+    sodqnt_bin = case_when(
+      sodqnt %in% c("3", "4", "") ~ "Si",  # Includi anche i valori vuoti come neutri
+      sodqnt %in% c("1", "2") ~ "No",
+      TRUE ~ "Si"  # Assumi che tutti gli altri casi (inclusi NA) siano neutri
+    ),
+    
+    # Ricodifica della variabile di soddisfazione della vita
+    votovi_bin = case_when(
+      votovi >= 6 ~ "Si",  # Soddisfatto con la vita
+      TRUE ~ "No"  # Insoddisfatto con la vita
+    ),
+    
+    # Ricodifica della variabile di soddisfazione lavoro/tempo libero
+    sodequ_bin = case_when(
+      sodequ %in% c("3", "4", "5") ~ "Si",  # Soddisfatto dell'equilibrio lavoro-tempo libero
+      TRUE ~ "No"  # Insoddisfatto
+    ),
+    
+    # Ricodifica della variabile di soddisfazione lavoro
+    sodla_bin = case_when(
+      sodla %in% c("4", "5") ~ "Si",  # Soddisfatto del lavoro
+      TRUE ~ "No"  # Insoddisfatto del lavoro
+    ),
+    
+    # Ricodifica della variabile di soddisfazione finanziaria
+    risec_bin = case_when(
+      risec %in% c("3", "4") ~ "Si",  # Soddisfatto della situazione finanziaria
+      TRUE ~ "No"  # Insoddisfatto
+    )
+  )
+
+# Seleziona le variabili demografiche e di soddisfazione per il modello
+dati_model_soddisfazione <- individui %>%
+  dplyr::select(telela_bin, fascia_eta, fascia_istruzione, sesso, regione, fascia_cittadinanza, sodqnt_bin, votovi_bin, sodequ_bin, sodla_bin, risec_bin) %>%
+  filter(!is.na(telela_bin))  # Rimuove NA in telela_bin
+
+# ----------------------------------------------------------
+# Stima del modello logit binario con variabili di soddisfazione
+# ----------------------------------------------------------
+
+modello_logit_soddisfazione <- glm(telela_bin ~ fascia_eta + fascia_istruzione + sesso + regione + fascia_cittadinanza + sodqnt_bin + votovi_bin + sodequ_bin + sodla_bin + risec_bin,
+                                   family = binomial(link = "logit"),
+                                   data = dati_model_soddisfazione)
+
+# Sommario del modello
+summary(modello_logit_soddisfazione)
+
+# Coefficienti come odds ratio
+exp(coef(modello_logit_soddisfazione))
+
+################################################################################
+############################### CONFRONTO TRA MODELLI #########################
+# Confronta AIC dei due modelli
+aic_modello_demografico <- AIC(modello_logit_demografico)
+aic_modello_soddisfazione <- AIC(modello_logit_soddisfazione)
+
+cat("AIC modello demografico:", aic_modello_demografico, "\n")
+cat("AIC modello soddisfazione:", aic_modello_soddisfazione, "\n")
+
+
+
+
+####ANOVA MODELLO DEMO E MODELLO DEM + SODD
+
+# Confronta il modello con variabili demografiche (modello ridotto) e il modello con variabili demografiche + soddisfazione (modello completo)
+anova(modello_logit_bin, modello_logit_soddisfazione, test = "Chisq")
+
