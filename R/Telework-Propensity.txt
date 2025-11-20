@@ -754,3 +754,4 @@ cat("AIC modello soddisfazione:", aic_modello_soddisfazione, "\n")
 # Confronta il modello con variabili demografiche (modello ridotto) e il modello con variabili demografiche + soddisfazione (modello completo)
 anova(modello_logit_bin, modello_logit_soddisfazione, test = "Chisq")
 
+
